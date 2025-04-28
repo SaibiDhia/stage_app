@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pfeproject/screens/register_page.dart';
 import 'package:pfeproject/screens/splash_screen.dart';
 import 'package:pfeproject/screens/login_page.dart';
 
@@ -21,6 +22,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => const SplashScreen(),
         '/login': (context) => LoginPage(),
+        '/register': (context) => RegisterPage(),
       },
       debugShowCheckedModeBanner: false,
     );

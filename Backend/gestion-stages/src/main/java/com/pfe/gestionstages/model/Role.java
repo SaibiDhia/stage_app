@@ -1,7 +1,7 @@
 package com.pfe.gestionstages.model;
 
 public enum Role {
-    STUDENT,
+    ETUDIANT,
     ENCADRANT,
     ADMIN
 }

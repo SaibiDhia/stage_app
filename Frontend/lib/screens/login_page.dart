@@ -90,6 +90,13 @@ class _LoginPageState extends State<LoginPage> {
                     onPressed: _login,
                     child: const Text('Se connecter'),
                   ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed('/register');
+              },
+              child: const Text("Pas encore inscrit ? Créez un compte"),
+            ),
           ],
         ),
       ),
