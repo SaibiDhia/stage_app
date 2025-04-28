@@ -25,7 +25,7 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     final url = Uri.parse(
-        'http://localhost:8081/api/auth/login'); // ← Important pour Android emulator !
+        'http://10.0.2.2:8081/api/auth/login'); // ← Important pour Android emulator !
 
     try {
       final response = await http.post(
