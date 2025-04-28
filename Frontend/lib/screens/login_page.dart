@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:pfeproject/screens/home_page.dart';
+import 'package:pfeproject/services/auth_service.dart'; // Import de ta fonction utilitaire
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,92 +13,83 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-  String? message;
-  bool isLoading = false;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
 
-  Future<void> login() async {
+  Future<void> _login() async {
     setState(() {
-      isLoading = true;
-      message = null;
+      _isLoading = true;
     });
 
-    final url = Uri.parse(
-        'http://10.0.2.2:8081/api/auth/login'); // ← Important pour Android emulator !
+    final url = Uri.parse('http://10.0.2.2:8081/api/auth/login');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': _emailController.text,
+        'password': _passwordController.text,
+      }),
+    );
 
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': emailController.text,
-          'password': passwordController.text,
-        }),
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final token = data['token'];
+      final role = data['role'];
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', token);
+      await prefs.setString('role', role);
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => HomePage(role: role),
+        ),
       );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final token = data['token'];
-        final role = data['role'];
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token);
-        await prefs.setString('role', role);
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomePage(role: role),
-          ),
-        );
-      } else {
-        setState(() {
-          message = 'Erreur de connexion : ${response.body}';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        message = 'Erreur réseau : $e';
-      });
+    } else if (response.statusCode == 401) {
+      // Mauvais identifiants, pas besoin de handleUnauthorized ici
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Identifiants invalides.')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erreur serveur. Veuillez réessayer.')),
+      );
     }
-
-    setState(() {
-      isLoading = false;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Connexion')),
+      appBar: AppBar(
+        title: const Text('Connexion'),
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextField(
-              controller: emailController,
+              controller: _emailController,
               decoration: const InputDecoration(labelText: 'Email'),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
             TextField(
-              controller: passwordController,
+              controller: _passwordController,
               decoration: const InputDecoration(labelText: 'Mot de passe'),
               obscureText: true,
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: isLoading ? null : login,
-              child: isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text('Se connecter'),
-            ),
-            const SizedBox(height: 20),
-            if (message != null)
-              Text(
-                message!,
-                style: const TextStyle(fontSize: 14),
-              ),
+            const SizedBox(height: 32),
+            _isLoading
+                ? const CircularProgressIndicator()
+                : ElevatedButton(
+                    onPressed: _login,
+                    child: const Text('Se connecter'),
+                  ),
           ],
         ),
       ),
