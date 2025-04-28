@@ -1,0 +1,42 @@
+ 
+# Flutter (Frontend)
+build/
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+generated_plugin_registrant.dart
+pubspec.lock
+
+# VS Code
+.vscode/
+
+# Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+*.bak
+.gradle/
+local.properties
+
+# Backend (Spring Boot)
+backend/target/
+backend/.mvn/
+backend/.idea/
+backend/*.iml
+backend/mvnw
+backend/mvnw.cmd
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+
+# Env files
+*.env
+*.key
