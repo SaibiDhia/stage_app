@@ -3,7 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pfeproject/screens/home_page.dart';
-import 'package:pfeproject/services/auth_service.dart'; // Import de ta fonction utilitaire
+import 'package:pfeproject/screens/dashboard_student.dart';
+import 'package:pfeproject/services/auth_service.dart'; // Pour handleUnauthorized
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -45,13 +46,16 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setString('token', token);
       await prefs.setString('role', role);
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => HomePage(role: role),
-        ),
-      );
+      if (role == 'ETUDIANT') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const DashboardStudent()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => HomePage(role: role)),
+        );
+      }
     } else if (response.statusCode == 401) {
-      // Mauvais identifiants, pas besoin de handleUnauthorized ici
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Identifiants invalides.')),
       );
