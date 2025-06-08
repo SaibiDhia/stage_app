@@ -50,6 +50,6 @@ public ResponseEntity<?> login(@RequestBody LoginRequest request) {
 
     String token = jwtService.generateToken(user.getEmail());
 
-    return ResponseEntity.ok(new LoginResponse(token, user.getRole().name()));
+    return ResponseEntity.ok(new LoginResponse(token, user.getRole().name(), user.getId()));
 }
 }
