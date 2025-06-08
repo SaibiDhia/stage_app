@@ -41,10 +41,12 @@ class _LoginPageState extends State<LoginPage> {
       final data = jsonDecode(response.body);
       final token = data['token'];
       final role = data['role'];
+      final userId = data['id'];
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', token);
       await prefs.setString('role', role);
+      await prefs.setInt('userId', userId);
 
       if (role == 'ETUDIANT') {
         Navigator.of(context).pushReplacement(

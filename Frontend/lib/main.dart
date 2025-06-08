@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pfeproject/screens/register_page.dart';
 import 'package:pfeproject/screens/splash_screen.dart';
 import 'package:pfeproject/screens/login_page.dart';
+import 'package:pfeproject/screens/depot_page.dart';
 
 void main() {
   runApp(const MyApp());
