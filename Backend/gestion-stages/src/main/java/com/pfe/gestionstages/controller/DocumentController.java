@@ -1,21 +1,32 @@
 package com.pfe.gestionstages.controller;
 
-import com.pfe.gestionstages.model.Document;
-import com.pfe.gestionstages.model.User;
-import com.pfe.gestionstages.repository.DocumentRepository;
-import com.pfe.gestionstages.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.pfe.gestionstages.model.Document;
+import com.pfe.gestionstages.model.Statut;
+import com.pfe.gestionstages.model.User;
+import com.pfe.gestionstages.repository.DocumentRepository;
+import com.pfe.gestionstages.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/documents")
@@ -53,6 +64,7 @@ public class DocumentController {
                     .type(type)
                     .cheminFichier(filePath.toString())
                     .dateDepot(LocalDate.now())
+                    .statut(Statut.EN_ATTENTE)
                     .utilisateur(userOpt.get())
                     .build();
 
@@ -69,4 +81,22 @@ public class DocumentController {
     public List<Document> getDocumentsByUser(@PathVariable Long userId) {
         return documentRepository.findByUtilisateurId(userId);
     }
+
+@GetMapping("/statut")
+public ResponseEntity<String> getStatut(
+    @RequestParam Long userId,
+    @RequestParam String type) {
+
+    Optional<Document> docOpt = documentRepository
+        .findTopByUtilisateurIdAndTypeOrderByDateDepotDesc(userId, type);
+
+    if (docOpt.isEmpty()) {
+        return ResponseEntity.ok("Non encore déposé");
+    }
+
+    // tu peux changer ça plus tard si tu ajoutes une colonne "statut" à Document
+    return ResponseEntity.ok("En attente");
+}
+
+
 }
