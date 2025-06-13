@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../screens/depot_page.dart';
+import 'package:pfeproject/screens/depot_page.dart';
+import 'package:pfeproject/screens/demande_convention_page.dart';
 
 class Sidebar extends StatelessWidget {
   const Sidebar({super.key});
@@ -7,71 +8,79 @@ class Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      backgroundColor: Colors.red[900],
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
           const DrawerHeader(
-            decoration: BoxDecoration(color: Colors.red),
-            child: Text(
-              'Menu PFE',
-              style: TextStyle(color: Colors.white, fontSize: 24),
-            ),
+            decoration: BoxDecoration(color: Colors.indigo),
+            child: Text('Menu',
+                style: TextStyle(color: Colors.white, fontSize: 24)),
           ),
-          _buildTile(Icons.dashboard, "Tableau de Bord PFE", () {}),
-          _buildTile(Icons.event, "Rendez-Vous & Visites", () {}),
-          _buildTile(Icons.assignment, "Gérer Convention", () {}),
-          _buildTile(Icons.article, "Gérer Plan Travail", () {}),
-          _buildTile(Icons.edit_document, "Gérer Avenants", () {}),
+          ListTile(
+            leading: const Icon(Icons.dashboard),
+            title: const Text('Tableau de Bord PFE'),
+            onTap: () {
+              Navigator.pushNamed(context, '/dashboard');
+            },
+          ),
           ExpansionTile(
-            title:
-                const Text("Livrables", style: TextStyle(color: Colors.white)),
-            leading: const Icon(Icons.cloud_upload, color: Colors.white),
-            collapsedIconColor: Colors.white,
-            iconColor: Colors.white,
+            leading: const Icon(Icons.bookmark),
+            title: const Text('Gérer Convention'),
             children: [
               ListTile(
-                title: const Text("Déposer Journaux"),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const DepotPage(documentType: "Journal de Bord"),
-                  ),
-                ),
+                title: const Text('Demander Convention'),
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => const DemandeConventionPage(),
+                  ));
+                },
               ),
               ListTile(
-                title: const Text("Déposer Bilans"),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
+                title: const Text('Déposer Convention Signée'),
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) =>
-                        const DepotPage(documentType: "Bilan"),
-                  ),
-                ),
+                        const DepotPage(documentType: 'Convention Signée'),
+                  ));
+                },
+              ),
+            ],
+          ),
+          ExpansionTile(
+            leading: const Icon(Icons.cloud_upload),
+            title: const Text('Livrables'),
+            children: [
+              ListTile(
+                title: const Text('Déposer Journaux'),
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) =>
+                        const DepotPage(documentType: 'Journal de Bord'),
+                  ));
+                },
               ),
               ListTile(
-                title: const Text("Déposer Rapports"),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
+                title: const Text('Déposer Bilans'),
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) =>
-                        const DepotPage(documentType: "Rapport"),
-                  ),
-                ),
+                        const DepotPage(documentType: 'Bilan Version 1'),
+                  ));
+                },
+              ),
+              ListTile(
+                title: const Text('Déposer Rapports'),
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) =>
+                        const DepotPage(documentType: 'Rapport Version 1'),
+                  ));
+                },
               ),
             ],
           ),
         ],
       ),
-    );
-  }
-
-  ListTile _buildTile(IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white),
-      title: Text(title, style: const TextStyle(color: Colors.white)),
-      onTap: onTap,
     );
   }
 }
