@@ -26,56 +26,68 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    final url = Uri.parse('http://10.0.2.2:8081/api/auth/login');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': _emailController.text,
-        'password': _passwordController.text,
-      }),
-    );
+    try {
+      final String baseUrl =
+          kIsWeb ? 'http://192.168.1.105:8081' : 'http://10.0.2.2:8081';
+
+      final Uri url = Uri.parse('$baseUrl/api/auth/login');
+      print('🔁 Sending request to: $url');
+
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': _emailController.text,
+          'password': _passwordController.text,
+        }),
+      );
+
+      print('✅ Status Code: ${response.statusCode}');
+      print('✅ Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final token = data['token'];
+        final role = data['role'];
+        final userId = data['id'];
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', token);
+        await prefs.setString('role', role);
+        await prefs.setInt('userId', userId);
+
+        if (role == 'ETUDIANT') {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const DashboardStudent()),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => kIsWeb
+                  ? const AdminDocumentWebPage()
+                  : const AdminDocumentPage(),
+            ),
+          );
+        }
+      } else if (response.statusCode == 401) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Identifiants invalides.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          Text('Erreur ${response.statusCode} : ${response.body}') as SnackBar,
+        );
+      }
+    } catch (e) {
+      print('❌ Exception: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur : $e')),
+      );
+    }
 
     setState(() {
       _isLoading = false;
     });
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final token = data['token'];
-      final role = data['role'];
-      final userId = data['id'];
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', token);
-      await prefs.setString('role', role);
-      await prefs.setInt('userId', userId);
-
-      if (role == 'ETUDIANT') {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const DashboardStudent()),
-        );
-      } else {
-        if (kIsWeb) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-                builder: (context) => const AdminDocumentWebPage()),
-          );
-        } else {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const AdminDocumentPage()),
-          );
-        }
-      }
-    } else if (response.statusCode == 401) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Identifiants invalides.')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erreur serveur. Veuillez réessayer.')),
-      );
-    }
   }
 
   @override
