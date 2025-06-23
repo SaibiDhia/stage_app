@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -77,6 +78,12 @@ public class DocumentController {
         }
     }
 
+    @GetMapping("/all")
+public ResponseEntity<List<Document>> getAllDocuments() {
+    List<Document> documents = documentRepository.findAll();
+    return ResponseEntity.ok(documents);
+}
+
     @GetMapping("/user/{userId}")
     public List<Document> getDocumentsByUser(@PathVariable Long userId) {
         return documentRepository.findByUtilisateurId(userId);
@@ -97,6 +104,25 @@ public ResponseEntity<String> getStatut(
     // tu peux changer ça plus tard si tu ajoutes une colonne "statut" à Document
     return ResponseEntity.ok("En attente");
 }
+
+@PutMapping("/{id}/valider")
+public ResponseEntity<?> validerDocument(@PathVariable Long id) {
+    return documentRepository.findById(id).map(doc -> {
+        doc.setStatut(Statut.VALIDE);
+        documentRepository.save(doc);
+        return ResponseEntity.ok("Document validé");
+    }).orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Document non trouvé"));
+}
+
+@PutMapping("/{id}/rejeter")
+public ResponseEntity<?> rejeterDocument(@PathVariable Long id) {
+    return documentRepository.findById(id).map(doc -> {
+        doc.setStatut(Statut.REJETE);
+        documentRepository.save(doc);
+        return ResponseEntity.ok("Document rejeté");
+    }).orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Document non trouvé"));
+}
+
 
 
 }
