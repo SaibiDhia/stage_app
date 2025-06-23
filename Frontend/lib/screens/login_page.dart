@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pfeproject/screens/home_page.dart';
+import 'package:pfeproject/screens/admin/admin_document_page.dart';
 import 'package:pfeproject/screens/dashboard_student.dart';
 import 'package:pfeproject/services/auth_service.dart'; // Pour handleUnauthorized
 
@@ -54,7 +55,7 @@ class _LoginPageState extends State<LoginPage> {
         );
       } else {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => HomePage(role: role)),
+          MaterialPageRoute(builder: (context) => const AdminDocumentPage()),
         );
       }
     } else if (response.statusCode == 401) {
