@@ -1,5 +1,14 @@
 package com.pfe.gestionstages.controller;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.pfe.gestionstages.dto.LoginRequest;
 import com.pfe.gestionstages.dto.LoginResponse;
 import com.pfe.gestionstages.dto.RegisterRequest;
@@ -8,9 +17,6 @@ import com.pfe.gestionstages.repository.UserRepository;
 import com.pfe.gestionstages.service.JwtService;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
 
 
 @RestController
@@ -52,4 +58,12 @@ public ResponseEntity<?> login(@RequestBody LoginRequest request) {
 
     return ResponseEntity.ok(new LoginResponse(token, user.getRole().name(), user.getId()));
 }
+
+@GetMapping("/login")
+public ResponseEntity<?> fakeLogin() {
+    return ResponseEntity
+        .status(HttpStatus.METHOD_NOT_ALLOWED)
+        .body("Ce endpoint accepte uniquement les requêtes POST.");
+}
+
 }
