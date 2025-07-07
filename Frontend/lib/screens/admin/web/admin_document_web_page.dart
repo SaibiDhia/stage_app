@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -20,8 +21,24 @@ class _AdminDocumentWebPageState extends State<AdminDocumentWebPage> {
   }
 
   Future<void> _fetchDocuments() async {
-    final response =
-        await http.get(Uri.parse('http://localhost:8081/api/documents/all'));
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Token manquant.")),
+      );
+      return;
+    }
+
+    final response = await http.get(
+      Uri.parse('http://192.168.1.105:8081/api/documents/all'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
     if (response.statusCode == 200) {
       setState(() {
         documents = jsonDecode(response.body);
@@ -32,14 +49,13 @@ class _AdminDocumentWebPageState extends State<AdminDocumentWebPage> {
         isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("Erreur lors du chargement des documents.")),
+        SnackBar(content: Text("Erreur: ${response.statusCode}")),
       );
     }
   }
 
   Future<void> _updateStatus(int docId, String action) async {
-    final url = 'http://localhost:8081/api/documents/$docId/$action';
+    final url = 'http://192.168.1.105:8081/api/documents/$docId/$action';
     final response = await http.put(Uri.parse(url));
     if (response.statusCode == 200) {
       _fetchDocuments();
