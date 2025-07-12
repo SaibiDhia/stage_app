@@ -13,26 +13,29 @@ class AdminDocumentWebPage extends StatefulWidget {
 class _AdminDocumentWebPageState extends State<AdminDocumentWebPage> {
   List<dynamic> documents = [];
   bool isLoading = true;
+  String? token;
 
   @override
   void initState() {
     super.initState();
-    _fetchDocuments();
+    _loadTokenAndFetchDocuments();
   }
 
-  Future<void> _fetchDocuments() async {
+  Future<void> _loadTokenAndFetchDocuments() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
+    token = prefs.getString('token');
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Token manquant.")),
       );
       return;
     }
+    _fetchDocuments();
+  }
 
+  Future<void> _fetchDocuments() async {
     final response = await http.get(
-      Uri.parse('http://192.168.1.105:8081/api/documents/all'),
+      Uri.parse('http://192.168.0.127:8081/api/documents/all'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -45,23 +48,30 @@ class _AdminDocumentWebPageState extends State<AdminDocumentWebPage> {
         isLoading = false;
       });
     } else {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Erreur: ${response.statusCode}")),
       );
     }
   }
 
-  Future<void> _updateStatus(int docId, String action) async {
-    final url = 'http://192.168.1.105:8081/api/documents/$docId/$action';
-    final response = await http.put(Uri.parse(url));
+  Future<void> _updateDocumentStatus(int id, String action) async {
+    final response = await http.put(
+      Uri.parse('http://192.168.0.127:8081/api/documents/$id/$action'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
     if (response.statusCode == 200) {
-      _fetchDocuments();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Document $action avec succès.")),
+      );
+      _fetchDocuments(); // refresh the list
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur : ${response.body}')),
+        SnackBar(content: Text("Échec du $action: ${response.statusCode}")),
       );
     }
   }
@@ -69,43 +79,38 @@ class _AdminDocumentWebPageState extends State<AdminDocumentWebPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Gestion des Documents (Web Admin)')),
+      appBar: AppBar(title: const Text("Validation des Documents")),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('ID')),
-                  DataColumn(label: Text('Type')),
-                  DataColumn(label: Text('Utilisateur')),
-                  DataColumn(label: Text('Statut')),
-                  DataColumn(label: Text('Action')),
-                ],
-                rows: documents.map((doc) {
-                  return DataRow(cells: [
-                    DataCell(Text(doc['id'].toString())),
-                    DataCell(Text(doc['type'])),
-                    DataCell(Text(doc['utilisateur']['email'] ?? 'Inconnu')),
-                    DataCell(Text(doc['statut'] ?? '')),
-                    DataCell(Row(
+          : ListView.builder(
+              itemCount: documents.length,
+              itemBuilder: (context, index) {
+                final doc = documents[index];
+                return Card(
+                  margin:
+                      const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  child: ListTile(
+                    title: Text(doc['nomFichier'] ?? 'Nom indisponible'),
+                    subtitle: Text("Statut: ${doc['statut']}"),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        ElevatedButton(
-                          onPressed: () => _updateStatus(doc['id'], 'valider'),
-                          child: const Text('Valider'),
+                        IconButton(
+                          icon: const Icon(Icons.check_circle,
+                              color: Colors.green),
+                          onPressed: () =>
+                              _updateDocumentStatus(doc['id'], "valider"),
                         ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () => _updateStatus(doc['id'], 'rejeter'),
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red),
-                          child: const Text('Rejeter'),
+                        IconButton(
+                          icon: const Icon(Icons.cancel, color: Colors.red),
+                          onPressed: () =>
+                              _updateDocumentStatus(doc['id'], "rejeter"),
                         ),
                       ],
-                    )),
-                  ]);
-                }).toList(),
-              ),
+                    ),
+                  ),
+                );
+              },
             ),
     );
   }

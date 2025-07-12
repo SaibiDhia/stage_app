@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pfeproject/screens/home_page.dart';
 import 'package:pfeproject/screens/admin/admin_document_page.dart';
 import 'package:pfeproject/screens/dashboard_student.dart';
-import 'package:pfeproject/services/auth_service.dart'; // Pour handleUnauthorized
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -22,13 +21,23 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
 
   Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez remplir tous les champs.')),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     try {
       final String baseUrl =
-          kIsWeb ? 'http://192.168.1.105:8081' : 'http://10.0.2.2:8081';
+          kIsWeb ? 'http://192.168.0.127:8081' : 'http://10.0.2.2:8081';
 
       final Uri url = Uri.parse('$baseUrl/api/auth/login');
       print('🔁 Sending request to: $url');
@@ -36,10 +45,7 @@ class _LoginPageState extends State<LoginPage> {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': _emailController.text,
-          'password': _passwordController.text,
-        }),
+        body: jsonEncode({'email': email, 'password': password}),
       );
 
       print('✅ Status Code: ${response.statusCode}');
@@ -52,10 +58,11 @@ class _LoginPageState extends State<LoginPage> {
         final userId = data['id'];
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token);
+        await prefs.setString('token', token); // ✅ correction ici
         await prefs.setString('role', role);
         await prefs.setInt('userId', userId);
 
+        // Navigation selon rôle
         if (role == 'ETUDIANT') {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const DashboardStudent()),
@@ -69,13 +76,24 @@ class _LoginPageState extends State<LoginPage> {
             ),
           );
         }
+        print('📦 Données sauvegardées :');
+        print('Token : $token');
+        print('Role : $role');
+        print('UserId : $userId');
+
+        final checkPrefs = await SharedPreferences.getInstance();
+        print('🔍 Check SharedPreferences après sauvegarde :');
+        print('token = ${checkPrefs.getString('token')}');
+        print('userId = ${checkPrefs.getInt('userId')}');
       } else if (response.statusCode == 401) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Identifiants invalides.')),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          Text('Erreur ${response.statusCode} : ${response.body}') as SnackBar,
+          SnackBar(
+              content:
+                  Text('Erreur ${response.statusCode} : ${response.body}')),
         );
       }
     } catch (e) {
@@ -88,6 +106,13 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       _isLoading = false;
     });
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -104,6 +129,7 @@ class _LoginPageState extends State<LoginPage> {
             TextField(
               controller: _emailController,
               decoration: const InputDecoration(labelText: 'Email'),
+              keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 16),
             TextField(
