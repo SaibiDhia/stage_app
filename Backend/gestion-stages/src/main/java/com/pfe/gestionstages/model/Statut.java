@@ -2,7 +2,7 @@
 package com.pfe.gestionstages.model;
 
 public enum Statut {
-    NON_DEPose,
+    NON_DEPOSE,
     EN_ATTENTE,
     VALIDE,
     REJETE

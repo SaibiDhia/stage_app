@@ -38,41 +38,70 @@ public class DocumentController {
         return false;
     }
 
-    @PostMapping("/upload")
-    public ResponseEntity<?> uploadDocument(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("type") String type,
-            @RequestParam("userId") Long userId) {
-
-        try {
-            if (!Files.exists(rootLocation)) {
-                Files.createDirectories(rootLocation);
-            }
-
-            String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
-            Path filePath = rootLocation.resolve(filename);
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-            Optional<User> userOpt = userRepository.findById(userId);
-            if (userOpt.isEmpty()) return ResponseEntity.badRequest().body("Utilisateur non trouvé");
-
-            Document doc = Document.builder()
-                    .nomFichier(filename)
-                    .type(type)
-                    .cheminFichier(filePath.toString())
-                    .dateDepot(LocalDate.now())
-                    .statut(Statut.EN_ATTENTE)
-                    .utilisateur(userOpt.get())
-                    .build();
-
-            documentRepository.save(doc);
-
-            return ResponseEntity.ok("Document déposé avec succès");
-
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erreur lors du dépôt : " + e.getMessage());
-        }
+    private boolean isMaxVersionReached(String type, int count) {
+        return switch (type) {
+            case "Bilan Version 1", "Bilan Version 2", "Bilan Version 3" -> count >= 1;
+            case "Rapport Version 1", "Rapport Version 2" -> count >= 1;
+            case "Journal de Bord" -> count >= 1;
+            default -> false;
+        };
     }
+
+    @PostMapping("/upload")
+public ResponseEntity<?> uploadDocument(
+        @RequestParam("file") MultipartFile file,
+        @RequestParam("type") String type,
+        @RequestParam("userId") Long userId) {
+
+    try {
+        // Vérifie si le dossier uploads existe
+        if (!Files.exists(rootLocation)) {
+            Files.createDirectories(rootLocation);
+        }
+
+        // Vérifie si l'utilisateur existe
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) return ResponseEntity.badRequest().body("Utilisateur non trouvé");
+
+        // 🔒 Vérifie si le max de versions est atteint pour ce type
+        Optional<Document> existingDoc = documentRepository.findTopByUtilisateurIdAndTypeOrderByDateDepotDesc(userId, type);
+
+if (existingDoc.isPresent()) {
+    Statut statut = existingDoc.get().getStatut();
+
+    if (statut == Statut.EN_ATTENTE) {
+        return ResponseEntity.badRequest().body("❌ Un document est déjà en attente de validation.");
+    }
+
+    if (statut == Statut.VALIDE) {
+        return ResponseEntity.badRequest().body("✅ Cette version a déjà été validée. Attendez la version suivante.");
+    }}
+
+        // Génère un nom de fichier unique
+        String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        Path filePath = rootLocation.resolve(filename);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+        // Crée et sauvegarde le document
+        Document doc = Document.builder()
+                .nomFichier(filename)
+                .type(type)
+                .cheminFichier(filePath.toString())
+                .dateDepot(LocalDate.now())
+                .statut(Statut.EN_ATTENTE)
+                .utilisateur(userOpt.get())
+                .build();
+
+        documentRepository.save(doc);
+
+        return ResponseEntity.ok("✅ Document déposé avec succès");
+
+    } catch (IOException e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erreur lors du dépôt : " + e.getMessage());
+    }
+}
+
+
 
     @GetMapping("/all")
     public ResponseEntity<?> getAllDocuments() {
@@ -90,19 +119,21 @@ public class DocumentController {
     }
 
     @GetMapping("/statut")
-    public ResponseEntity<String> getStatut(
-            @RequestParam Long userId,
-            @RequestParam String type) {
+public ResponseEntity<String> getStatut(
+    @RequestParam Long userId,
+    @RequestParam String type) {
 
-        Optional<Document> docOpt = documentRepository
-                .findTopByUtilisateurIdAndTypeOrderByDateDepotDesc(userId, type);
+    Optional<Document> docOpt = documentRepository
+            .findTopByUtilisateurIdAndTypeOrderByDateDepotDesc(userId, type);
 
-        if (docOpt.isEmpty()) {
-            return ResponseEntity.ok("Non encore déposé");
-        }
-
-        return ResponseEntity.ok(docOpt.get().getStatut().name());
+    if (docOpt.isEmpty()) {
+        // IMPORTANT : DOIT ETRE EXACTEMENT "NON_DEPOSE"
+        return ResponseEntity.ok("NON_DEPOSE");
     }
+
+    return ResponseEntity.ok(docOpt.get().getStatut().name());
+}
+
 
     @PutMapping("/{id}/valider")
     public ResponseEntity<?> validerDocument(@PathVariable Long id) {

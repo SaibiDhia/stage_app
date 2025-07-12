@@ -11,5 +11,5 @@ import java.util.Optional;
 public interface DocumentRepository extends JpaRepository<Document, Long> {
     List<Document> findByUtilisateurId(Long utilisateurId);
     Optional<Document> findTopByUtilisateurIdAndTypeOrderByDateDepotDesc(Long utilisateurId, String type);
-
+    int countByUtilisateurIdAndType(Long userId, String type);
 }
