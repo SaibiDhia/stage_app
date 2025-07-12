@@ -84,7 +84,7 @@ public class DocumentController {
         return ResponseEntity.ok(documents);
     }
 
-    @GetMapping("/user/{userId}")
+    @GetMapping("/users/{userId}")
     public List<Document> getDocumentsByUser(@PathVariable Long userId) {
         return documentRepository.findByUtilisateurId(userId);
     }
@@ -101,7 +101,7 @@ public class DocumentController {
             return ResponseEntity.ok("Non encore déposé");
         }
 
-        return ResponseEntity.ok("En attente");
+        return ResponseEntity.ok(docOpt.get().getStatut().name());
     }
 
     @PutMapping("/{id}/valider")
