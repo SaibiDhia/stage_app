@@ -64,7 +64,7 @@ class Sidebar extends StatelessWidget {
                 onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) =>
-                        const DepotPage(documentType: 'Bilan Version 1'),
+                        const DepotPage(documentType: 'Bilan'),
                   ));
                 },
               ),
@@ -73,7 +73,7 @@ class Sidebar extends StatelessWidget {
                 onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) =>
-                        const DepotPage(documentType: 'Rapport Version 1'),
+                        const DepotPage(documentType: 'Rapport'),
                   ));
                 },
               ),
