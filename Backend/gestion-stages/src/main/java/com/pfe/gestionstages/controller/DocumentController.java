@@ -118,21 +118,22 @@ if (existingDoc.isPresent()) {
         return documentRepository.findByUtilisateurId(userId);
     }
 
-    @GetMapping("/statut")
+    // Spring Boot
+@GetMapping("/statut")
 public ResponseEntity<String> getStatut(
-    @RequestParam Long userId,
-    @RequestParam String type) {
+        @RequestParam Long userId,
+        @RequestParam String type) {
 
     Optional<Document> docOpt = documentRepository
             .findTopByUtilisateurIdAndTypeOrderByDateDepotDesc(userId, type);
 
     if (docOpt.isEmpty()) {
-        // IMPORTANT : DOIT ETRE EXACTEMENT "NON_DEPOSE"
         return ResponseEntity.ok("NON_DEPOSE");
     }
 
     return ResponseEntity.ok(docOpt.get().getStatut().name());
 }
+
 
 
     @PutMapping("/{id}/valider")
@@ -160,4 +161,17 @@ public ResponseEntity<String> getStatut(
             return ResponseEntity.ok("Document rejeté");
         }).orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Document non trouvé"));
     }
+
+    // Récupérer tous les dépôts (versions) pour un type et un user
+@GetMapping("/historique")
+public ResponseEntity<List<Document>> getHistorique(
+        @RequestParam Long userId,
+        @RequestParam String baseType) {
+    // Ici on prend tous les documents dont le type commence par la baseType (ex: "Bilan", "Rapport", ...)
+    List<Document> docs = documentRepository
+        .findByUtilisateurIdAndTypeStartingWithOrderByDateDepotAsc(userId, baseType);
+
+    return ResponseEntity.ok(docs);
+}
+
 }

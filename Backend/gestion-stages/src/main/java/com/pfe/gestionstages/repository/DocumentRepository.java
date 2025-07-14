@@ -12,4 +12,5 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     List<Document> findByUtilisateurId(Long utilisateurId);
     Optional<Document> findTopByUtilisateurIdAndTypeOrderByDateDepotDesc(Long utilisateurId, String type);
     int countByUtilisateurIdAndType(Long userId, String type);
+    List<Document> findByUtilisateurIdAndTypeStartingWithOrderByDateDepotAsc(Long userId, String typePrefix);
 }
