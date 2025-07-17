@@ -1,12 +1,18 @@
 package com.pfe.gestionstages.controller;
 
+import com.pfe.gestionstages.dto.DocumentDTO;
 import com.pfe.gestionstages.model.Document;
 import com.pfe.gestionstages.model.Statut;
 import com.pfe.gestionstages.model.User;
+import com.pfe.gestionstages.dto.DocumentDTO;
 import com.pfe.gestionstages.repository.DocumentRepository;
 import com.pfe.gestionstages.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -104,14 +110,16 @@ if (existingDoc.isPresent()) {
 
 
     @GetMapping("/all")
-    public ResponseEntity<?> getAllDocuments() {
-        if (!isAdmin()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé : admin uniquement.");
-        }
-
-        List<Document> documents = documentRepository.findAll();
-        return ResponseEntity.ok(documents);
+public ResponseEntity<?> getAllDocuments() {
+    if (!isAdmin()) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé : admin uniquement.");
     }
+    List<DocumentDTO> docs = documentRepository.findAll()
+        .stream()
+        .map(DocumentDTO::new)
+        .toList();
+    return ResponseEntity.ok(docs);
+}
 
     @GetMapping("/users/{userId}")
     public List<Document> getDocumentsByUser(@PathVariable Long userId) {
@@ -173,5 +181,42 @@ public ResponseEntity<List<Document>> getHistorique(
 
     return ResponseEntity.ok(docs);
 }
+
+@GetMapping("/download/{id}")
+public ResponseEntity<?> downloadDocument(@PathVariable Long id) {
+    // Récupère l’utilisateur courant
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth == null || !(auth.getPrincipal() instanceof User user)) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Non authentifié");
+    }
+
+    Optional<Document> docOpt = documentRepository.findById(id);
+    if (docOpt.isEmpty()) {
+        return ResponseEntity.notFound().build();
+    }
+    Document doc = docOpt.get();
+
+    // Autoriser uniquement l’admin OU l’utilisateur qui a uploadé le fichier
+    boolean isAdmin = user.getRole().name().equals("ADMIN");
+    boolean isOwner = doc.getUtilisateur().getId().equals(user.getId());
+    if (!isAdmin && !isOwner) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Non autorisé");
+    }
+
+    try {
+        Path path = Paths.get(doc.getCheminFichier());
+        byte[] fileBytes = Files.readAllBytes(path);
+
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getNomFichier() + "\"")
+            .contentType(MediaType.APPLICATION_OCTET_STREAM)
+            .body(fileBytes);
+
+    } catch (IOException e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Erreur lors du téléchargement : " + e.getMessage());
+    }
+}
+
 
 }
