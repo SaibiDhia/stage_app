@@ -58,7 +58,7 @@ class _LoginPageState extends State<LoginPage> {
         final userId = data['id'];
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token); // ✅ correction ici
+        await prefs.setString('token', token);
         await prefs.setString('role', role);
         await prefs.setInt('userId', userId);
 
@@ -115,43 +115,143 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  // --------------- PARTIE UI ---------------
+
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return _buildWebLogin(context);
+    } else {
+      return _buildMobileLogin(context);
+    }
+  }
+
+  Widget _buildWebLogin(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F4F8),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Card(
+            elevation: 8,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            child: Container(
+              width: 410,
+              padding: const EdgeInsets.all(36),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.account_circle,
+                      size: 64, color: Colors.indigo),
+                  const SizedBox(height: 18),
+                  const Text("Connexion",
+                      style:
+                          TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHints: const [AutofillHints.email],
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: _passwordController,
+                    decoration: const InputDecoration(
+                      labelText: 'Mot de passe',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.lock_outline),
+                    ),
+                    obscureText: true,
+                    autofillHints: const [AutofillHints.password],
+                  ),
+                  const SizedBox(height: 30),
+                  _isLoading
+                      ? const CircularProgressIndicator()
+                      : SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              backgroundColor:
+                                  const Color.fromARGB(255, 255, 255, 255),
+                            ),
+                            onPressed: _login,
+                            child: const Text('Se connecter',
+                                style: TextStyle(fontSize: 17)),
+                          ),
+                        ),
+                  const SizedBox(height: 18),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pushNamed('/register');
+                    },
+                    child: const Text(
+                      "Pas encore inscrit ? Créez un compte",
+                      style: TextStyle(fontSize: 15),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileLogin(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Connexion'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
+      body: Center(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(18.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.account_circle,
+                    size: 55, color: Colors.indigo),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(labelText: 'Email'),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _passwordController,
+                  decoration: const InputDecoration(labelText: 'Mot de passe'),
+                  obscureText: true,
+                ),
+                const SizedBox(height: 32),
+                _isLoading
+                    ? const CircularProgressIndicator()
+                    : SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _login,
+                          child: const Text('Se connecter'),
+                        ),
+                      ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pushNamed('/register');
+                  },
+                  child: const Text("Pas encore inscrit ? Créez un compte"),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Mot de passe'),
-              obscureText: true,
-            ),
-            const SizedBox(height: 32),
-            _isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _login,
-                    child: const Text('Se connecter'),
-                  ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pushNamed('/register');
-              },
-              child: const Text("Pas encore inscrit ? Créez un compte"),
-            ),
-          ],
+          ),
         ),
       ),
     );

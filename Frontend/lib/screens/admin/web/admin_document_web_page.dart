@@ -1,9 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:html' as html;
 import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../../helpers/download_helper_web.dart'
+    if (dart.library.io) '../../../helpers/download_helper_stub.dart';
 
 class AdminDocumentWebPage extends StatefulWidget {
   const AdminDocumentWebPage({super.key});
@@ -90,28 +92,6 @@ class _AdminDocumentWebPageState extends State<AdminDocumentWebPage> {
         return matchesSearch && matchesType && matchesStatut;
       }).toList();
     });
-  }
-
-  Future<void> downloadDocument(
-      int docId, String token, String nomFichier) async {
-    final url =
-        Uri.parse('http://192.168.0.127:8081/api/documents/download/$docId');
-    final response = await http.get(url, headers: {
-      'Authorization': 'Bearer $token',
-    });
-
-    if (response.statusCode == 200) {
-      final bytes = response.bodyBytes;
-      final blob = html.Blob([bytes]);
-      final url2 = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url2)
-        ..setAttribute('download', nomFichier)
-        ..click();
-      html.Url.revokeObjectUrl(url2);
-    } else {
-      // Affiche un message d'erreur si tu veux
-      print("Erreur de téléchargement: ${response.statusCode}");
-    }
   }
 
   Future<void> _updateDocumentStatus(int id, String action) async {
@@ -224,14 +204,45 @@ class _AdminDocumentWebPageState extends State<AdminDocumentWebPage> {
                                       // Bouton télécharger
                                       IconButton(
                                         icon: const Icon(Icons.download),
-                                        onPressed: () {
-                                          // Passe ici l’id du doc, le token, et le nom du fichier (tu peux adapter avec doc['type'] si tu préfères un nom différent)
-                                          downloadDocument(
-                                              doc['id'],
-                                              token!,
-                                              doc['nomFichier'] ??
-                                                  "document.pdf");
-                                        },
+                                        onPressed: kIsWeb
+                                            ? () async {
+                                                final url =
+                                                    'http://192.168.0.127:8081/api/documents/download/${doc['id']}';
+
+                                                try {
+                                                  final response = await http
+                                                      .get(Uri.parse(url),
+                                                          headers: {
+                                                        'Authorization':
+                                                            'Bearer $token',
+                                                      });
+                                                  if (response.statusCode ==
+                                                      200) {
+                                                    String filename =
+                                                        doc['nomFichier'] ??
+                                                            "document.pdf";
+                                                    downloadBytes(
+                                                        response.bodyBytes,
+                                                        filename);
+                                                  } else {
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                      SnackBar(
+                                                          content: Text(
+                                                              "Erreur téléchargement: ${response.statusCode}")),
+                                                    );
+                                                  }
+                                                } catch (e) {
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    SnackBar(
+                                                        content: Text(
+                                                            "Erreur réseau: $e")),
+                                                  );
+                                                }
+                                              }
+                                            : null,
                                         tooltip: "Télécharger",
                                       ),
                                       IconButton(
