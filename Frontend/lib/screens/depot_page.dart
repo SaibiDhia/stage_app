@@ -16,6 +16,7 @@ class DepotPage extends StatefulWidget {
 }
 
 class _DepotPageState extends State<DepotPage> {
+  bool _conventionValidee = false;
   File? _selectedFile;
   bool _isUploading = false;
   String? _uploadMessage;
@@ -30,6 +31,7 @@ class _DepotPageState extends State<DepotPage> {
   void initState() {
     super.initState();
     _maxVersion = _getMaxVersion(widget.documentType);
+    _checkConventionValidation();
     _fetchStatutAndHistorique();
     _startAutoRefresh();
   }
@@ -62,6 +64,32 @@ class _DepotPageState extends State<DepotPage> {
       return "Journal de Bord"; // une seule version
     }
     return "$baseType Version $version";
+  }
+
+  Future<void> _checkConventionValidation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('userId');
+    final token = prefs.getString('token');
+
+    if (userId == null || token == null) return;
+
+    final url =
+        Uri.parse('http://10.0.2.2:8081/api/convention/by-user/$userId');
+    final response = await http.get(url, headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    });
+
+    if (response.statusCode == 200) {
+      final data = json.decode(utf8.decode(response.bodyBytes));
+      setState(() {
+        _conventionValidee = data['statut'] == 'VALIDE';
+      });
+    } else {
+      setState(() {
+        _conventionValidee = false;
+      });
+    }
   }
 
   Future<void> _pickFile() async {
@@ -204,8 +232,9 @@ class _DepotPageState extends State<DepotPage> {
 
   @override
   Widget build(BuildContext context) {
-    bool isDepotDisabled =
-        _statut == 'EN_ATTENTE' || _statut == 'TOUTES_VALIDEES';
+    bool isDepotDisabled = !_conventionValidee ||
+        _statut == 'EN_ATTENTE' ||
+        _statut == 'TOUTES_VALIDEES';
 
     return Scaffold(
       appBar: AppBar(
@@ -224,8 +253,14 @@ class _DepotPageState extends State<DepotPage> {
               ),
             ),
             const SizedBox(height: 16),
-
             // Messages UX
+            if (!_conventionValidee)
+              _buildStatusBox(
+                Colors.grey[200]!,
+                Icons.lock_outline,
+                Colors.grey,
+                "🛑 Vous ne pouvez pas déposer de documents tant que votre convention signée n’est pas validée.",
+              ),
             if (_statut == 'EN_ATTENTE')
               _buildStatusBox(
                 Colors.amber[100]!,

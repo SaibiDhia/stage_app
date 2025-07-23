@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // pour kIsWeb
 import 'package:http/http.dart' as http;
+import 'package:pfeproject/screens/admin/web/admin_dashboard_web.dart';
 import 'package:pfeproject/screens/admin/web/admin_document_web_page.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -71,7 +72,7 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (context) => kIsWeb
-                  ? const AdminDocumentWebPage()
+                  ? const AdminDashboardWeb()
                   : const AdminDocumentPage(),
             ),
           );
