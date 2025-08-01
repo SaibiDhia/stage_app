@@ -5,6 +5,7 @@ import 'package:pfeproject/screens/login_page.dart';
 import 'package:pfeproject/screens/depot_page.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 

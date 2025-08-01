@@ -56,13 +56,8 @@ class _DepotPageState extends State<DepotPage> {
   }
 
   String _getVersionedType(String baseType, int version) {
-    // Si baseType contient déjà "Version", NE PAS rajouter le suffixe
-    if (baseType.contains('Version')) {
-      return baseType;
-    }
-    if (baseType == 'Journal de Bord') {
-      return "Journal de Bord"; // une seule version
-    }
+    if (baseType.contains('Version')) return baseType;
+    if (baseType == 'Journal de Bord') return "Journal de Bord";
     return "$baseType Version $version";
   }
 
@@ -79,16 +74,25 @@ class _DepotPageState extends State<DepotPage> {
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
     });
+    print("📡 Status code de la convention : ${response.statusCode}");
 
     if (response.statusCode == 200) {
-      final data = json.decode(utf8.decode(response.bodyBytes));
-      setState(() {
-        _conventionValidee = data['statut'] == 'VALIDE';
-      });
+      final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
+      debugPrint("🧾 Réponse JSON complète : $data");
+
+      if (data.isNotEmpty) {
+        final convention = data[0];
+        setState(() {
+          _conventionValidee = convention['statut'] == 'SIGNEE_VALIDEE';
+        });
+        debugPrint("🔐 Statut de la convention: ${convention['statut']}");
+      } else {
+        debugPrint("📭 Pas de convention trouvée pour cet utilisateur");
+        setState(() => _conventionValidee = false);
+      }
     } else {
-      setState(() {
-        _conventionValidee = false;
-      });
+      debugPrint("❌ Erreur statut ${response.statusCode}");
+      setState(() => _conventionValidee = false);
     }
   }
 
@@ -113,7 +117,6 @@ class _DepotPageState extends State<DepotPage> {
         return;
       }
 
-      // Récupérer l'historique
       final histoUrl =
           'http://10.0.2.2:8081/api/documents/historique?userId=$userId&baseType=${widget.documentType}';
       final histoResp = await http.get(Uri.parse(histoUrl), headers: {
@@ -135,15 +138,10 @@ class _DepotPageState extends State<DepotPage> {
         });
       }
 
-      print("maxVersion: $_maxVersion");
-      print("_historique:");
-      for (var h in _historique) print(h);
-
       for (int version = 1; version <= _maxVersion; version++) {
         final docType = _getVersionedType(widget.documentType, version);
         final versionDocs =
             _historique.where((doc) => doc['type'] == docType).toList();
-        print("TEST: $docType, trouvé: ${versionDocs.length}");
 
         if (versionDocs.isEmpty) {
           setState(() {
@@ -164,15 +162,8 @@ class _DepotPageState extends State<DepotPage> {
           });
           return;
         }
-        if (lastStatus != 'VALIDE') {
-          setState(() {
-            _currentVersion = version;
-            _currentType = docType;
-            _statut = lastStatus;
-          });
-          return;
-        }
       }
+
       setState(() {
         _statut = 'TOUTES_VALIDEES';
         _currentVersion = _maxVersion;
@@ -239,7 +230,7 @@ class _DepotPageState extends State<DepotPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Déposer $_currentType'),
-        leading: BackButton(),
+        leading: const BackButton(),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -253,7 +244,6 @@ class _DepotPageState extends State<DepotPage> {
               ),
             ),
             const SizedBox(height: 16),
-            // Messages UX
             if (!_conventionValidee)
               _buildStatusBox(
                 Colors.grey[200]!,
@@ -289,7 +279,6 @@ class _DepotPageState extends State<DepotPage> {
                 Colors.blue,
                 "Déposez la version $_currentVersion.",
               ),
-            // Actions fichier/dépôt
             ElevatedButton.icon(
               onPressed: isDepotDisabled ? null : _pickFile,
               icon: const Icon(Icons.attach_file),
@@ -316,8 +305,6 @@ class _DepotPageState extends State<DepotPage> {
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ],
-
-            // Historique des dépôts
             const SizedBox(height: 32),
             const Text(
               "Historique des dépôts :",
@@ -348,11 +335,7 @@ class _DepotPageState extends State<DepotPage> {
         children: [
           Icon(icon, color: iconColor),
           const SizedBox(width: 10),
-          Expanded(
-              child: Text(
-            message,
-            style: const TextStyle(color: Colors.black87),
-          )),
+          Expanded(child: Text(message)),
         ],
       ),
     );
@@ -389,7 +372,7 @@ class _DepotPageState extends State<DepotPage> {
           BoxShadow(
               color: Colors.grey.withOpacity(0.09),
               blurRadius: 3,
-              offset: Offset(0, 2))
+              offset: const Offset(0, 2))
         ],
       ),
       child: Row(
@@ -415,15 +398,16 @@ class _DepotPageState extends State<DepotPage> {
           Text(
             status,
             style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: status == 'VALIDE'
-                    ? Colors.green[900]
-                    : status == 'EN_ATTENTE'
-                        ? Colors.orange[800]
-                        : status == 'REJETE'
-                            ? Colors.red[900]
-                            : Colors.black54),
-          )
+              fontWeight: FontWeight.bold,
+              color: status == 'VALIDE'
+                  ? Colors.green[900]
+                  : status == 'EN_ATTENTE'
+                      ? Colors.orange[800]
+                      : status == 'REJETE'
+                          ? Colors.red[900]
+                          : Colors.black54,
+            ),
+          ),
         ],
       ),
     );

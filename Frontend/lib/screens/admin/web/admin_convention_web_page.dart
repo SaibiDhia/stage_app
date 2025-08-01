@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:pfeproject/helpers/enregistrer_fichier_universel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -88,6 +89,63 @@ class _AdminConventionWebPageState extends State<AdminConventionWebPage> {
     await fetchConventions();
   }
 
+  Future<void> downloadConventionSignee(int id) async {
+    final response = await http.get(
+      Uri.parse("http://192.168.0.127:8081/api/convention/$id/download-signee"),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      await enregistrerFichierUniversel(
+        bytes: response.bodyBytes,
+        nomFichier: "convention_signee_$id.pdf",
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("📥 Fichier téléchargé")),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Erreur lors du téléchargement")),
+      );
+    }
+  }
+
+  Future<void> validerConventionSignee(int id) async {
+    final response = await http.put(
+      Uri.parse("http://192.168.0.127:8081/api/convention/$id/valider-signee"),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      await fetchConventions();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Convention signée validée")),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Erreur de validation")),
+      );
+    }
+  }
+
+  Future<void> rejeterConventionSignee(int id) async {
+    final response = await http.put(
+      Uri.parse("http://192.168.0.127:8081/api/convention/$id/rejeter-signee"),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      await fetchConventions();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("🚫 Convention signée rejetée")),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Échec du rejet")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -153,21 +211,76 @@ class _AdminConventionWebPageState extends State<AdminConventionWebPage> {
                               Text("Date Début: ${conv['dateDebut'] ?? ''}"),
                               Text("Date Fin: ${conv['dateFin'] ?? ''}"),
                               Text("Statut: ${conv['statut'] ?? ''}"),
+                              const SizedBox(height: 8),
+                              if (conv['statut'] == 'EN_ATTENTE')
+                                Text("📄 Demande de convention à traiter",
+                                    style:
+                                        const TextStyle(color: Colors.orange)),
+                              if (conv['statut'] == 'VALIDEE')
+                                Text(
+                                    "✅ Convention validée. En attente de dépôt signé par l’étudiant.",
+                                    style:
+                                        const TextStyle(color: Colors.green)),
+                              if (conv['statut'] ==
+                                  'SIGNEE_EN_ATTENTE_VALIDATION')
+                                Text(
+                                    "✍️ Convention signée déposée. À valider ou rejeter.",
+                                    style: const TextStyle(color: Colors.blue)),
+                              if (conv['statut'] == 'SIGNEE_VALIDEE')
+                                Text(
+                                    "📌 Convention signée validée définitivement.",
+                                    style:
+                                        const TextStyle(color: Colors.green)),
+                              if (conv['statut'] == 'REJETEE')
+                                Text("❌ Convention rejetée par l’admin.",
+                                    style: const TextStyle(color: Colors.red)),
+                              if (conv['statut'] == 'SIGNEE_REJETEE')
+                                Text(
+                                    "🔁 Convention signée rejetée, l'étudiant peut redéposer.",
+                                    style: const TextStyle(
+                                        color: Colors.redAccent)),
                             ],
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              IconButton(
-                                icon: const Icon(Icons.check,
-                                    color: Colors.green),
-                                onPressed: () => validerEtUploader(conv['id']),
-                              ),
-                              IconButton(
-                                icon:
-                                    const Icon(Icons.close, color: Colors.red),
-                                onPressed: () => rejeterConvention(conv['id']),
-                              ),
+                              if (conv['statut'] == 'EN_ATTENTE') ...[
+                                IconButton(
+                                  icon: const Icon(Icons.check,
+                                      color: Colors.green),
+                                  onPressed: () =>
+                                      validerEtUploader(conv['id']),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close,
+                                      color: Colors.red),
+                                  onPressed: () =>
+                                      rejeterConvention(conv['id']),
+                                ),
+                              ],
+                              if (conv['statut'] ==
+                                  'SIGNEE_EN_ATTENTE_VALIDATION') ...[
+                                IconButton(
+                                  icon: const Icon(Icons.download),
+                                  onPressed: () =>
+                                      downloadConventionSignee(conv['id']),
+                                  tooltip: "Télécharger convention signée",
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.verified,
+                                      color: Colors.blue),
+                                  onPressed: () =>
+                                      validerConventionSignee(conv['id']),
+                                  tooltip: "Valider convention signée",
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.cancel_presentation,
+                                      color: Colors.orange),
+                                  onPressed: () =>
+                                      rejeterConventionSignee(conv['id']),
+                                  tooltip: "Rejeter convention signée",
+                                ),
+                              ],
                             ],
                           ),
                         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pfeproject/screens/deposer_convention_signee_page.dart';
 import 'package:pfeproject/screens/depot_page.dart';
 import 'package:pfeproject/screens/demande_convention_page.dart';
 
@@ -40,7 +41,7 @@ class Sidebar extends StatelessWidget {
                 onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) =>
-                        const DepotPage(documentType: 'Convention Signée'),
+                        const DeposerConventionSigneePage(), // 👈 C'est la bonne page
                   ));
                 },
               ),
