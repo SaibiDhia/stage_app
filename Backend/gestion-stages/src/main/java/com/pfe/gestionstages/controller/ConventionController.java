@@ -145,6 +145,7 @@ public ResponseEntity<?> uploadAdmin(@PathVariable Long id, @RequestParam("file"
     // 7️⃣ Étudiant dépose la convention signée
     @PostMapping("/{id}/upload-signee")
     public ResponseEntity<?> uploadSignee(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        System.out.println(">>> Appel endpoint uploadSignee() OK !");
         User current = getCurrentUser();
         if (current == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Non authentifié");
 
@@ -159,7 +160,7 @@ public ResponseEntity<?> uploadAdmin(@PathVariable Long id, @RequestParam("file"
                     return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Non autorisé");
                 }
                 conv.setCheminConventionSignee(filename);
-                conv.setStatut(StatutConvention.SIGNEE_ATTENTE_VALIDATION);
+                conv.setStatut(StatutConvention.SIGNEE_EN_ATTENTE_VALIDATION);
                 conventionRepository.save(conv);
                 return ResponseEntity.ok("📎 Convention signée déposée");
             }).orElse(ResponseEntity.notFound().build());
@@ -225,5 +226,28 @@ public ResponseEntity<?> getLatestConventionStatus(@PathVariable Long id) {
 
     return ResponseEntity.ok("BLOQUE");
 }
+
+@PutMapping("/{id}/valider-signee")
+public ResponseEntity<?> validerSignee(@PathVariable Long id) {
+    if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé");
+
+    return conventionRepository.findById(id).map(conv -> {
+        conv.setStatut(StatutConvention.SIGNEE_VALIDEE);
+        conventionRepository.save(conv);
+        return ResponseEntity.ok("✅ Convention signée validée");
+    }).orElse(ResponseEntity.notFound().build());
+}
+
+@PutMapping("/{id}/rejeter-signee")
+public ResponseEntity<?> rejeterSignee(@PathVariable Long id) {
+    if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé");
+
+    return conventionRepository.findById(id).map(conv -> {
+        conv.setStatut(StatutConvention.SIGNEE_REJETEE);
+        conventionRepository.save(conv);
+        return ResponseEntity.ok("❌ Convention signée rejetée");
+    }).orElse(ResponseEntity.notFound().build());
+}
+
 
 }

@@ -33,6 +33,7 @@ public class Convention {
     private LocalDate dateFin;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "statut")
     private StatutConvention statut;
 
     private String cheminConventionAdmin;
