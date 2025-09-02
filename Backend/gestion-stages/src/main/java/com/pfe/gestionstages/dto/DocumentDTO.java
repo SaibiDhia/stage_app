@@ -9,6 +9,7 @@ public class DocumentDTO {
     public String statut;
     public String cheminFichier;
     public String dateDepot;
+    public String optionParcours;
 
     public DocumentDTO(Document doc) {
         this.id = doc.getId();
@@ -17,6 +18,9 @@ public class DocumentDTO {
         this.statut = doc.getStatut().name();
         this.cheminFichier = doc.getCheminFichier();
         this.dateDepot = doc.getDateDepot() != null ? doc.getDateDepot().toString() : "";
+        this.optionParcours = (doc.getUtilisateur() != null && doc.getUtilisateur().getOptionParcours() != null)
+                ? doc.getUtilisateur().getOptionParcours().name()
+                : null;
     }
 }
 

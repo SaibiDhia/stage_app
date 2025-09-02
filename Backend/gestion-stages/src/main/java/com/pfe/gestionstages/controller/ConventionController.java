@@ -1,10 +1,12 @@
 package com.pfe.gestionstages.controller;
 
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.pfe.gestionstages.dto.ConventionDTO;
 import com.pfe.gestionstages.model.Convention;
+import com.pfe.gestionstages.model.OptionParcours;
 import com.pfe.gestionstages.model.StatutConvention;
 import com.pfe.gestionstages.model.User;
 import com.pfe.gestionstages.repository.ConventionRepository;
@@ -81,17 +83,17 @@ private String mask(String t) {
         return ResponseEntity.ok(list);
     }
 
-    // 3️⃣ Voir toutes les conventions (admin)
-   @GetMapping("/all")
-public ResponseEntity<?> getAll(@RequestParam(required = false) String email) {
-    if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé");
-
-    List<Convention> result = (email != null && !email.isBlank())
-            ? conventionRepository.findByEtudiantEmailContainingIgnoreCase(email)
-            : conventionRepository.findAll();
-
-    List<ConventionDTO> dtoList = result.stream().map(ConventionDTO::new).toList();
-    return ResponseEntity.ok(dtoList);
+@GetMapping("/all")
+public ResponseEntity<?> getAll(
+        @RequestParam(required = false) String email,
+        @RequestParam(required = false, name = "option") OptionParcours option, // ⬅️ front envoie `option`
+        @RequestParam(required = false) StatutConvention statut               // ⬅️ pour le dropdown Statut
+) {
+    if (!isAdmin()) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé");
+    }
+    var list = conventionRepository.findAllWithFilters(email, option, statut);
+    return ResponseEntity.ok(list);
 }
 
     // 4️⃣ Valider la convention

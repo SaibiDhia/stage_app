@@ -3,6 +3,7 @@ package com.pfe.gestionstages.controller;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.pfe.gestionstages.dto.DocumentDTO;
 import com.pfe.gestionstages.model.Document;
+import com.pfe.gestionstages.model.OptionParcours;
 import com.pfe.gestionstages.model.Statut;
 import com.pfe.gestionstages.model.User;
 import com.pfe.gestionstages.dto.DocumentDTO;
@@ -115,16 +116,23 @@ if (existingDoc.isPresent()) {
 
 
 
-    @GetMapping("/all")
-public ResponseEntity<?> getAllDocuments() {
+   @GetMapping("/all")
+public ResponseEntity<?> getAllDocuments(
+        @RequestParam(required = false) String email,
+        @RequestParam(required = false, name = "option") OptionParcours optionParcours,
+        @RequestParam(required = false) String type,
+        @RequestParam(required = false) Statut statut
+) {
     if (!isAdmin()) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé : admin uniquement.");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body("Accès refusé : admin uniquement.");
     }
-    List<DocumentDTO> docs = documentRepository.findAll()
-        .stream()
-        .map(DocumentDTO::new)
-        .toList();
-    return ResponseEntity.ok(docs);
+
+    // Un seul appel au repo : tous les filtres sont gérés dans la @Query
+    List<DocumentDTO> dtoList = documentRepository
+            .findAllWithFilters(email, optionParcours, type, statut);
+
+    return ResponseEntity.ok(dtoList);
 }
 
     @GetMapping("/users/{userId}")
@@ -222,6 +230,41 @@ public ResponseEntity<List<Document>> getHistorique(
 
 @GetMapping("/download/{id}")
 public ResponseEntity<?> downloadDocument(@PathVariable Long id) {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth == null || !(auth.getPrincipal() instanceof User user)) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Non authentifié");
+    }
+
+    Optional<Document> docOpt = documentRepository.findById(id);
+    if (docOpt.isEmpty()) return ResponseEntity.notFound().build();
+    Document doc = docOpt.get();
+
+    boolean isAdmin = user.getRole().name().equals("ADMIN");
+    boolean isOwner = doc.getUtilisateur().getId().equals(user.getId());
+    if (!isAdmin && !isOwner) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Non autorisé");
+    }
+
+    try {
+        Path path = Paths.get(doc.getCheminFichier());
+        byte[] fileBytes = Files.readAllBytes(path);
+
+        String contentType = Files.probeContentType(path);
+        if (contentType == null) contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getNomFichier() + "\"")
+            .contentType(MediaType.parseMediaType(contentType))
+            .body(fileBytes);
+
+    } catch (IOException e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Erreur lors du téléchargement : " + e.getMessage());
+    }
+}}
+/* 
+@GetMapping("/download/{id}")
+public ResponseEntity<?> downloadDocument(@PathVariable Long id) {
     // Récupère l’utilisateur courant
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth == null || !(auth.getPrincipal() instanceof User user)) {
@@ -258,3 +301,4 @@ public ResponseEntity<?> downloadDocument(@PathVariable Long id) {
 
 
 }
+*/
