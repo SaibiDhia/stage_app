@@ -1,5 +1,8 @@
 package com.pfe.gestionstages.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.google.firebase.messaging.FirebaseMessagingException;
 import com.pfe.gestionstages.dto.ConventionDTO;
 import com.pfe.gestionstages.model.Convention;
 import com.pfe.gestionstages.model.StatutConvention;
@@ -15,6 +18,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.pfe.gestionstages.repository.FcmTokenRepository;
+import com.pfe.gestionstages.service.NotificationService;
+
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -30,8 +36,18 @@ public class ConventionController {
 
     private final ConventionRepository conventionRepository;
     private final UserRepository userRepository;
+    private final FcmTokenRepository fcmTokenRepository;
+    private final NotificationService notificationService;
 
     private final Path rootDir = Paths.get("conventions");
+
+    private static final Logger log = LoggerFactory.getLogger(ConventionController.class);
+
+private String mask(String t) {
+    if (t == null || t.length() < 10) return "****";
+    return t.substring(0, 6) + "..." + t.substring(t.length() - 4);
+}
+
 
     private boolean isAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -80,27 +96,59 @@ public ResponseEntity<?> getAll(@RequestParam(required = false) String email) {
 
     // 4️⃣ Valider la convention
     @PutMapping("/{id}/valider")
-    public ResponseEntity<?> valider(@PathVariable Long id) {
-        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé");
+public ResponseEntity<?> valider(@PathVariable Long id) {
+    if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé");
 
-        return conventionRepository.findById(id).map(conv -> {
-            conv.setStatut(StatutConvention.VALIDEE);
-            conventionRepository.save(conv);
-            return ResponseEntity.ok("✅ Convention validée");
-        }).orElse(ResponseEntity.notFound().build());
-    }
+    return conventionRepository.findById(id).map(conv -> {
+        conv.setStatut(StatutConvention.VALIDEE);
+        conventionRepository.save(conv);
+
+        User etudiant = conv.getEtudiant();
+        fcmTokenRepository.findByUser(etudiant).ifPresentOrElse(token -> {
+            log.info("📌 [VALIDE] Token trouvé pour user {} ({}): {}", etudiant.getId(), etudiant.getEmail(), mask(token.getToken()));
+            try {
+                notificationService.envoyerNotification(
+                        token.getToken(),
+                        "✅ Convention validée",
+                        "Votre convention a été validée."
+                );
+                log.info("✅ [VALIDE] Notification envoyée à {}", etudiant.getEmail());
+            } catch (FirebaseMessagingException e) {
+                log.error("❌ [VALIDE] Erreur envoi notification à {}", etudiant.getEmail(), e);
+            }
+        }, () -> log.warn("⚠️ [VALIDE] Aucun token FCM pour user {} ({})", etudiant.getId(), etudiant.getEmail()));
+
+        return ResponseEntity.ok("✅ Convention validée");
+    }).orElse(ResponseEntity.notFound().build());
+}
 
     // 5️⃣ Rejeter la convention
-    @PutMapping("/{id}/rejeter")
-    public ResponseEntity<?> rejeter(@PathVariable Long id) {
-        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé");
+   @PutMapping("/{id}/rejeter")
+public ResponseEntity<?> rejeter(@PathVariable Long id) {
+    if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé");
 
-        return conventionRepository.findById(id).map(conv -> {
-            conv.setStatut(StatutConvention.REJETEE);
-            conventionRepository.save(conv);
-            return ResponseEntity.ok("❌ Convention rejetée");
-        }).orElse(ResponseEntity.notFound().build());
-    }
+    return conventionRepository.findById(id).map(conv -> {
+        conv.setStatut(StatutConvention.REJETEE);
+        conventionRepository.save(conv);
+
+        User etudiant = conv.getEtudiant();
+        fcmTokenRepository.findByUser(etudiant).ifPresentOrElse(token -> {
+            log.info("📌 [REJETER] Token trouvé pour user {} ({}): {}", etudiant.getId(), etudiant.getEmail(), mask(token.getToken()));
+            try {
+                notificationService.envoyerNotification(
+                        token.getToken(),
+                        "❌ Convention rejetée",
+                        "Votre convention a été rejetée. Merci de corriger et re-soumettre."
+                );
+                log.info("✅ [REJETER] Notification envoyée à {}", etudiant.getEmail());
+            } catch (FirebaseMessagingException e) {
+                log.error("❌ [REJETER] Erreur envoi notification à {}", etudiant.getEmail(), e);
+            }
+        }, () -> log.warn("⚠️ [REJETER] Aucun token FCM pour user {} ({})", etudiant.getId(), etudiant.getEmail()));
+
+        return ResponseEntity.ok("❌ Convention rejetée");
+    }).orElse(ResponseEntity.notFound().build());
+}
 
     // 🔟 Endpoint pour récupérer la dernière convention de l’étudiant connecté
 @GetMapping("/ma-convention")
@@ -234,6 +282,22 @@ public ResponseEntity<?> validerSignee(@PathVariable Long id) {
     return conventionRepository.findById(id).map(conv -> {
         conv.setStatut(StatutConvention.SIGNEE_VALIDEE);
         conventionRepository.save(conv);
+
+        User etudiant = conv.getEtudiant();
+        fcmTokenRepository.findByUser(etudiant).ifPresentOrElse(token -> {
+            log.info("📌 [VALIDE-SIGNEE] Token user {} ({}): {}", etudiant.getId(), etudiant.getEmail(), mask(token.getToken()));
+            try {
+                notificationService.envoyerNotification(
+                        token.getToken(),
+                        "✅ Convention signée validée",
+                        "Votre convention signée a été validée."
+                );
+                log.info("✅ [VALIDE-SIGNEE] Notification envoyée à {}", etudiant.getEmail());
+            } catch (FirebaseMessagingException e) {
+                log.error("❌ [VALIDE-SIGNEE] Erreur envoi notification à {}", etudiant.getEmail(), e);
+            }
+        }, () -> log.warn("⚠️ [VALIDE-SIGNEE] Aucun token FCM pour user {} ({})", etudiant.getId(), etudiant.getEmail()));
+
         return ResponseEntity.ok("✅ Convention signée validée");
     }).orElse(ResponseEntity.notFound().build());
 }
@@ -245,9 +309,23 @@ public ResponseEntity<?> rejeterSignee(@PathVariable Long id) {
     return conventionRepository.findById(id).map(conv -> {
         conv.setStatut(StatutConvention.SIGNEE_REJETEE);
         conventionRepository.save(conv);
+
+        User etudiant = conv.getEtudiant();
+        fcmTokenRepository.findByUser(etudiant).ifPresentOrElse(token -> {
+            log.info("📌 [REJETER-SIGNEE] Token user {} ({}): {}", etudiant.getId(), etudiant.getEmail(), mask(token.getToken()));
+            try {
+                notificationService.envoyerNotification(
+                        token.getToken(),
+                        "❌ Convention signée rejetée",
+                        "Votre convention signée a été rejetée. Merci de corriger."
+                );
+                log.info("✅ [REJETER-SIGNEE] Notification envoyée à {}", etudiant.getEmail());
+            } catch (FirebaseMessagingException e) {
+                log.error("❌ [REJETER-SIGNEE] Erreur envoi notification à {}", etudiant.getEmail(), e);
+            }
+        }, () -> log.warn("⚠️ [REJETER-SIGNEE] Aucun token FCM pour user {} ({})", etudiant.getId(), etudiant.getEmail()));
+
         return ResponseEntity.ok("❌ Convention signée rejetée");
     }).orElse(ResponseEntity.notFound().build());
 }
-
-
 }

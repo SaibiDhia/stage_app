@@ -32,6 +32,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/documents/**").authenticated()
                         .requestMatchers("/api/documents/download/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/users/*/fcm-token").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/convention/**").permitAll()
 
 

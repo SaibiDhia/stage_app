@@ -1,5 +1,6 @@
 package com.pfe.gestionstages.controller;
 
+import com.google.firebase.messaging.FirebaseMessagingException;
 import com.pfe.gestionstages.dto.DocumentDTO;
 import com.pfe.gestionstages.model.Document;
 import com.pfe.gestionstages.model.Statut;
@@ -18,6 +19,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.pfe.gestionstages.repository.FcmTokenRepository;
+import com.pfe.gestionstages.service.NotificationService;
+
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -33,6 +37,8 @@ public class DocumentController {
 
     private final DocumentRepository documentRepository;
     private final UserRepository userRepository;
+    private final FcmTokenRepository fcmTokenRepository;
+    private final NotificationService notificationService;
 
     private final Path rootLocation = Paths.get("uploads");
 
@@ -145,30 +151,62 @@ public ResponseEntity<String> getStatut(
 
 
     @PutMapping("/{id}/valider")
-    public ResponseEntity<?> validerDocument(@PathVariable Long id) {
-        if (!isAdmin()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé : admin uniquement.");
-        }
-
-        return documentRepository.findById(id).map(doc -> {
-            doc.setStatut(Statut.VALIDE);
-            documentRepository.save(doc);
-            return ResponseEntity.ok("Document validé");
-        }).orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Document non trouvé"));
+public ResponseEntity<?> validerDocument(@PathVariable Long id) {
+    if (!isAdmin()) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé : admin uniquement.");
     }
+
+    return documentRepository.findById(id).map(doc -> {
+        doc.setStatut(Statut.VALIDE);
+        documentRepository.save(doc);
+
+        // 🔔 Envoi de notification à l'étudiant
+        User etudiant = doc.getUtilisateur();
+        fcmTokenRepository.findByUser(etudiant).ifPresent(token -> {
+            try {
+                notificationService.envoyerNotification(
+   token.getToken(),
+   "Document validé",
+   "Votre document '" + doc.getType() + "' a été validé."
+);
+            } catch (FirebaseMessagingException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        });
+
+        return ResponseEntity.ok("Document validé");
+    }).orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Document non trouvé"));
+}
 
     @PutMapping("/{id}/rejeter")
-    public ResponseEntity<?> rejeterDocument(@PathVariable Long id) {
-        if (!isAdmin()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé : admin uniquement.");
-        }
-
-        return documentRepository.findById(id).map(doc -> {
-            doc.setStatut(Statut.REJETE);
-            documentRepository.save(doc);
-            return ResponseEntity.ok("Document rejeté");
-        }).orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Document non trouvé"));
+public ResponseEntity<?> rejeterDocument(@PathVariable Long id) {
+    if (!isAdmin()) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé : admin uniquement.");
     }
+
+    return documentRepository.findById(id).map(doc -> {
+        doc.setStatut(Statut.REJETE);
+        documentRepository.save(doc);
+
+        // 🔔 Envoi de notification à l'étudiant
+        User etudiant = doc.getUtilisateur();
+        fcmTokenRepository.findByUser(etudiant).ifPresent(token -> {
+            try {
+                notificationService.envoyerNotification(
+   token.getToken(),
+   "Document validé",
+   "Votre document '" + doc.getType() + "' a été validé."
+);
+            } catch (FirebaseMessagingException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        });
+
+        return ResponseEntity.ok("Document rejeté");
+    }).orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Document non trouvé"));
+}
 
     // Récupérer tous les dépôts (versions) pour un type et un user
 @GetMapping("/historique")
