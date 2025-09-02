@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pfeproject/screens/home_page.dart';
 import 'package:pfeproject/screens/admin/admin_document_page.dart';
 import 'package:pfeproject/screens/dashboard_student.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:pfeproject/services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -41,16 +43,11 @@ class _LoginPageState extends State<LoginPage> {
           kIsWeb ? 'http://192.168.0.127:8081' : 'http://10.0.2.2:8081';
 
       final Uri url = Uri.parse('$baseUrl/api/auth/login');
-      print('🔁 Sending request to: $url');
-
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );
-
-      print('✅ Status Code: ${response.statusCode}');
-      print('✅ Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -63,7 +60,10 @@ class _LoginPageState extends State<LoginPage> {
         await prefs.setString('role', role);
         await prefs.setInt('userId', userId);
 
-        // Navigation selon rôle
+        // 👇 Récupère le token FCM du téléphone
+        await registerFcmToken(userId: userId, jwt: token);
+
+        // Navigation selon le rôle
         if (role == 'ETUDIANT') {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const DashboardStudent()),
@@ -77,15 +77,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
           );
         }
-        print('📦 Données sauvegardées :');
-        print('Token : $token');
-        print('Role : $role');
-        print('UserId : $userId');
-
-        final checkPrefs = await SharedPreferences.getInstance();
-        print('🔍 Check SharedPreferences après sauvegarde :');
-        print('token = ${checkPrefs.getString('token')}');
-        print('userId = ${checkPrefs.getInt('userId')}');
       } else if (response.statusCode == 401) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Identifiants invalides.')),
@@ -98,7 +89,6 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } catch (e) {
-      print('❌ Exception: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erreur : $e')),
       );

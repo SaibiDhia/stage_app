@@ -1,9 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../widgets/sidebar.dart';
 import '../widgets/timeline.dart';
 
-class DashboardStudent extends StatelessWidget {
+// Plugin de notif local (à déclarer globalement dans main.dart)
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+class DashboardStudent extends StatefulWidget {
   const DashboardStudent({super.key});
+
+  @override
+  State<DashboardStudent> createState() => _DashboardStudentState();
+}
+
+class _DashboardStudentState extends State<DashboardStudent> {
+  @override
+  void initState() {
+    super.initState();
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      RemoteNotification? notification = message.notification;
+      AndroidNotification? android = message.notification?.android;
+
+      if (notification != null && android != null) {
+        flutterLocalNotificationsPlugin.show(
+          notification.hashCode,
+          notification.title,
+          notification.body,
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'channel_id',
+              'Notifications',
+              importance: Importance.max,
+              priority: Priority.high,
+            ),
+          ),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +50,6 @@ class DashboardStudent extends StatelessWidget {
       TimelineStep(title: 'Demande Convention', date: '20-02-2025', done: true),
       TimelineStep(title: 'Remise Plan Travail', date: '--', done: false),
       TimelineStep(title: 'Dépôt Journal', date: '10-03-2025', done: false),
-      // ajoute le reste
     ];
 
     return Scaffold(
@@ -30,12 +66,14 @@ class DashboardStudent extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                    child: _statusCard("Traitement Convention", "20-02-2025",
-                        "TRAITÉE", Colors.green.shade100)),
+                  child: _statusCard("Traitement Convention", "20-02-2025",
+                      "TRAITÉE", Colors.green.shade100),
+                ),
                 SizedBox(width: 12),
                 Expanded(
-                    child: _statusCard("Traitement Plan Travail", "18-04-2025",
-                        "DÉPOSÉE", Colors.blue.shade100)),
+                  child: _statusCard("Traitement Plan Travail", "18-04-2025",
+                      "DÉPOSÉE", Colors.blue.shade100),
+                ),
               ],
             ),
             SizedBox(height: 24),

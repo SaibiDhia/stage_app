@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "41889985478",
+    "project_id": "gestion-stages-notifs",
+    "storage_bucket": "gestion-stages-notifs.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:41889985478:android:c6e05238e07000416fb8c7",
+        "android_client_info": {
+          "package_name": "com.example.pfeproject"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTr-q1GIvFJC0r2WfAh1XFZYChueqlVIo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
