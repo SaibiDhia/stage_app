@@ -1,9 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart'; // kIsWeb
-import 'package:http/http.dart' as http;
+// lib/screens/register_page.dart
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
 import 'package:pfeproject/screens/login_page.dart';
+import 'package:pfeproject/core/options_parcours.dart'; // <-- enum + labels
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -13,84 +15,98 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
+  // --- contrôleurs
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
 
-  String? _selectedRole;
-  final List<String> _roles = ['ETUDIANT', 'ADMIN'];
-
+  // --- états UI
   bool _isLoading = false;
 
+  // --- rôles (avec ENCADRANT comme demandé)
+  final List<String> _roles = ['ETUDIANT', 'ENCADRANT', 'ADMIN'];
+  String? _selectedRole = 'ETUDIANT';
+
+  // --- option/parcours (enum partagé avec le backend)
+  OptionParcours? _selectedOption;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // ========== API ==========
   Future<void> _register() async {
+    final fullName = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
-    final name = _nameController.text.trim();
 
-    if (email.isEmpty ||
+    // validations de base
+    if (fullName.isEmpty ||
+        email.isEmpty ||
         password.isEmpty ||
-        name.isEmpty ||
         _selectedRole == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez remplir tous les champs.')),
+        const SnackBar(content: Text("Veuillez remplir tous les champs.")),
       );
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    // Si rôle ≠ ADMIN, on impose une option
+    if (_selectedRole != 'ADMIN' && _selectedOption == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Veuillez choisir une option/parcours.")),
+      );
+      return;
+    }
 
+    // payload vers le backend (les noms doivent correspondre à RegisterRequest côté Spring)
+    final body = <String, dynamic>{
+      'fullName': fullName,
+      'email': email,
+      'password': password,
+      'role': _selectedRole, // "ETUDIANT" | "ENCADRANT" | "ADMIN"
+      if (_selectedOption != null)
+        'optionParcours': _selectedOption!
+            .name, // <-- mapping enum dart -> enum java (ex: ERP_BI)
+    };
+
+    setState(() => _isLoading = true);
     try {
       final baseUrl =
           kIsWeb ? 'http://192.168.0.127:8081' : 'http://10.0.2.2:8081';
-
-      final response = await http.post(
+      final res = await http.post(
         Uri.parse('$baseUrl/api/auth/register'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-          'fullName': name,
-          'role': _selectedRole,
-        }),
+        body: jsonEncode(body),
       );
 
-      if (response.statusCode == 200) {
+      if (res.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('✅ Inscription réussie. Connectez-vous.')),
+          const SnackBar(content: Text("✅ Inscription réussie")),
         );
+        if (!mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const LoginPage()),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur ${response.statusCode} : ${response.body}'),
-          ),
+          SnackBar(content: Text("❌ ${res.statusCode} : ${res.body}")),
         );
       }
     } catch (e) {
-      print("❌ Exception: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur : $e')),
+        SnackBar(content: Text("⚠️ Erreur: $e")),
       );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    setState(() {
-      _isLoading = false;
-    });
   }
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _nameController.dispose();
-    super.dispose();
-  }
-
+  // ========== UI ==========
   @override
   Widget build(BuildContext context) {
     return kIsWeb ? _buildWebUI(context) : _buildMobileUI(context);
@@ -143,6 +159,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget _buildFormFields() {
     return Column(
       children: [
+        // Nom
         TextField(
           controller: _nameController,
           decoration: const InputDecoration(
@@ -152,6 +169,8 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
         const SizedBox(height: 18),
+
+        // Email
         TextField(
           controller: _emailController,
           decoration: const InputDecoration(
@@ -162,6 +181,8 @@ class _RegisterPageState extends State<RegisterPage> {
           keyboardType: TextInputType.emailAddress,
         ),
         const SizedBox(height: 18),
+
+        // Password
         TextField(
           controller: _passwordController,
           decoration: const InputDecoration(
@@ -172,6 +193,8 @@ class _RegisterPageState extends State<RegisterPage> {
           obscureText: true,
         ),
         const SizedBox(height: 18),
+
+        // Rôle
         DropdownButtonFormField<String>(
           decoration: const InputDecoration(
             labelText: 'Rôle',
@@ -180,18 +203,50 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
           value: _selectedRole,
           items: _roles
-              .map((role) => DropdownMenuItem(
-                    value: role,
-                    child: Text(role == 'ETUDIANT' ? 'Étudiant' : 'Admin'),
+              .map((r) => DropdownMenuItem(
+                    value: r,
+                    child: Text(
+                      r == 'ETUDIANT'
+                          ? 'Étudiant'
+                          : (r == 'ENCADRANT' ? 'Encadrant' : 'Admin'),
+                    ),
                   ))
               .toList(),
-          onChanged: (value) {
+          onChanged: (v) {
             setState(() {
-              _selectedRole = value;
+              _selectedRole = v;
+              // si ADMIN, on efface l’option (colonne peut rester null côté backend)
+              if (_selectedRole == 'ADMIN') {
+                _selectedOption = null;
+              }
             });
           },
         ),
+        const SizedBox(height: 18),
+
+        // Option/Parcours (masquée pour ADMIN)
+        if (_selectedRole != 'ADMIN')
+          DropdownButtonFormField<OptionParcours>(
+            decoration: const InputDecoration(
+              labelText: 'Option / Parcours',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.school),
+            ),
+            value: _selectedOption,
+            items: OptionParcours.values
+                .map(
+                  (opt) => DropdownMenuItem<OptionParcours>(
+                    value: opt,
+                    child: Text(kOptionLabels[opt] ?? opt.name),
+                  ),
+                )
+                .toList(),
+            onChanged: (opt) => setState(() => _selectedOption = opt),
+          ),
+
         const SizedBox(height: 30),
+
+        // CTA
         _isLoading
             ? const CircularProgressIndicator()
             : SizedBox(
@@ -207,6 +262,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       const Text("S'inscrire", style: TextStyle(fontSize: 17)),
                 ),
               ),
+
         const SizedBox(height: 16),
         TextButton(
           onPressed: () {
