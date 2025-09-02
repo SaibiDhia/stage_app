@@ -40,3 +40,4 @@ Thumbs.db
 # Env files
 *.env
 *.key
+Backend/gestion-stages/src/main/resources/service-account.json
